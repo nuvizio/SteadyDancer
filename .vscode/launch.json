@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Debug T2V Generation",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/generate_dancer.py",
+            "args": [
+                "--task", "t2v-14B",
+                "--size", "1280*720",
+                "--ckpt_dir", "checkpoints/Wan2.1-T2V-14B",
+                "--prompt", "Two anthropomorphic cats in comfy clothes cooking a romantic dinner, high quality, 4k, photorealistic",
+                "--save_file", "debug_t2v_output.mp4"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        }
+    ]
+}

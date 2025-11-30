@@ -1,4 +1,6 @@
-.*
+# .*
+!.vscode/launch.json
+
 *.py[cod]
 # *.jpg
 *.jpeg
@@ -25,8 +27,8 @@ cache
 __pycache__/
 storage/
 samples/
-!.gitignore
-!requirements.txt
+
+
 .DS_Store
 *DS_Store
 google/
@@ -37,4 +39,5 @@ Wan2.1-I2V-14B-720P/
 
 preprocess/pretrained_weights/*
 SteadyDancer-14B/*
-preprocess/output/*
+preprocess/output/*!.vscode/launch.json
+!.vscode/launch.json
