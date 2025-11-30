@@ -150,6 +150,10 @@ class WanT2V:
             from .utils.gguf_loader import load_wan_gguf
             load_wan_gguf(self.model, gguf_video_path, device=self.device)
             
+            # Quantize to 4-bit to fit in VRAM
+            from .utils.quantization import quantize_model
+            self.model = quantize_model(self.model)
+            
             self.model.eval().requires_grad_(False)
             
         else:
