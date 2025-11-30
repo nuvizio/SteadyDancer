@@ -76,14 +76,45 @@ class WanI2V:
         self.param_dtype = config.param_dtype
 
         shard_fn = partial(shard_model, device_id=device_id)
-        self.text_encoder = T5EncoderModel(
-            text_len=config.text_len,
-            dtype=config.t5_dtype,
-            device=torch.device('cpu'),
-            checkpoint_path=os.path.join(checkpoint_dir, config.t5_checkpoint),
-            tokenizer_path=os.path.join(checkpoint_dir, config.t5_tokenizer),
-            shard_fn=shard_fn if t5_fsdp else None,
-        )
+        shard_fn = partial(shard_model, device_id=device_id)
+        
+        # Check for T5 checkpoint candidates
+        t5_candidates = [
+            config.t5_checkpoint, # The one in config
+            'models_t5_umt5-xxl-enc-bf16.pth', # Original default
+            'umt5-xxl-encoder-Q8_0.gguf', # Common GGUF name
+        ]
+        
+        t5_ckpt_path = None
+        for candidate in t5_candidates:
+            path = os.path.join(checkpoint_dir, candidate)
+            if os.path.exists(path):
+                t5_ckpt_path = path
+                break
+        
+        if t5_ckpt_path is None:
+            raise FileNotFoundError(f"No T5 checkpoint found in {checkpoint_dir}. Expected one of: {t5_candidates}")
+            
+        logging.info(f"Using T5 checkpoint: {t5_ckpt_path}")
+
+        if t5_ckpt_path.endswith('.gguf'):
+            from .modules.t5_gguf import GGUFT5Encoder
+            logging.info(f"Detected GGUF T5 checkpoint: {t5_ckpt_path}")
+            self.text_encoder = GGUFT5Encoder(
+                model_path=t5_ckpt_path,
+                device=self.device
+            )
+            self.is_gguf_t5 = True
+        else:
+            self.text_encoder = T5EncoderModel(
+                text_len=config.text_len,
+                dtype=config.t5_dtype,
+                device=torch.device('cpu'),
+                checkpoint_path=t5_ckpt_path,
+                tokenizer_path=os.path.join(checkpoint_dir, config.t5_tokenizer),
+                shard_fn=shard_fn if t5_fsdp else None,
+            )
+            self.is_gguf_t5 = False
 
         self.vae_stride = config.vae_stride
         self.patch_size = config.patch_size
@@ -99,8 +130,38 @@ class WanI2V:
             tokenizer_path=os.path.join(checkpoint_dir, config.clip_tokenizer))
 
         logging.info(f"Creating WanModel from {checkpoint_dir}")
-        self.model = WanModel.from_pretrained(checkpoint_dir)
-        self.model.eval().requires_grad_(False)
+        
+        # Check for GGUF video model
+        gguf_video_path = os.path.join(checkpoint_dir, "SteadyDancer-14B-Q8_0.gguf")
+        if os.path.exists(gguf_video_path):
+            logging.info(f"Detected GGUF Video Model: {gguf_video_path}")
+            
+            self.model = WanModel(
+                model_type='i2v',
+                patch_size=config.patch_size,
+                text_len=config.text_len,
+                in_dim=16, 
+                dim=config.dim,
+                ffn_dim=config.ffn_dim,
+                freq_dim=config.freq_dim,
+                text_dim=4096, 
+                out_dim=16, 
+                num_heads=config.num_heads,
+                num_layers=config.num_layers,
+                window_size=config.window_size,
+                qk_norm=config.qk_norm,
+                cross_attn_norm=config.cross_attn_norm,
+                eps=config.eps
+            )
+            
+            from .utils.gguf_loader import load_wan_gguf
+            load_wan_gguf(self.model, gguf_video_path, device=self.device)
+            
+            self.model.eval().requires_grad_(False)
+            
+        else:
+            self.model = WanModel.from_pretrained(checkpoint_dir)
+            self.model.eval().requires_grad_(False)
 
         if t5_fsdp or dit_fsdp or use_usp:
             init_on_cpu = False
@@ -220,11 +281,15 @@ class WanI2V:
             n_prompt = self.sample_neg_prompt
 
         # preprocess
+        # preprocess
         if not self.t5_cpu:
-            self.text_encoder.model.to(self.device)
+            if not getattr(self, 'is_gguf_t5', False):
+                self.text_encoder.model.to(self.device)
+            
             context = self.text_encoder([input_prompt], self.device)
             context_null = self.text_encoder([n_prompt], self.device)
-            if offload_model:
+            
+            if offload_model and not getattr(self, 'is_gguf_t5', False):
                 self.text_encoder.model.cpu()
         else:
             context = self.text_encoder([input_prompt], torch.device('cpu'))

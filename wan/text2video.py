@@ -114,9 +114,48 @@ class WanT2V:
             device=self.device)
 
         logging.info(f"Creating WanModel from {checkpoint_dir}")
-        self.model = WanModel.from_pretrained(checkpoint_dir)
-        self.model.eval().requires_grad_(False)
-
+        
+        # Check for GGUF video model
+        gguf_video_path = os.path.join(checkpoint_dir, "SteadyDancer-14B-Q8_0.gguf")
+        if os.path.exists(gguf_video_path):
+            logging.info(f"Detected GGUF Video Model: {gguf_video_path}")
+            # Initialize empty model first (using config)
+            # We need to create the model instance without loading weights first?
+            # WanModel.from_pretrained does both.
+            # We can instantiate WanModel directly.
+            
+            # We need to pass arguments to __init__.
+            # WanModel.__init__ args:
+            # model_type='t2v', patch_size=(1, 2, 2), text_len=512, in_dim=16, dim=2048, ...
+            # These are in `config`.
+            
+            self.model = WanModel(
+                model_type='t2v', # Assuming t2v for now, or check config
+                patch_size=config.patch_size,
+                text_len=config.text_len,
+                in_dim=16, # Default?
+                dim=config.dim,
+                ffn_dim=config.ffn_dim,
+                freq_dim=config.freq_dim,
+                text_dim=4096, # T5 dim
+                out_dim=16, # Default?
+                num_heads=config.num_heads,
+                num_layers=config.num_layers,
+                window_size=config.window_size,
+                qk_norm=config.qk_norm,
+                cross_attn_norm=config.cross_attn_norm,
+                eps=config.eps
+            )
+            
+            from .utils.gguf_loader import load_wan_gguf
+            load_wan_gguf(self.model, gguf_video_path, device=self.device)
+            
+            self.model.eval().requires_grad_(False)
+            
+        else:
+            self.model = WanModel.from_pretrained(checkpoint_dir)
+            self.model.eval().requires_grad_(False)
+        
         if use_usp:
             from xfuser.core.distributed import get_sequence_parallel_world_size
 

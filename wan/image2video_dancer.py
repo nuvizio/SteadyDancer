@@ -131,9 +131,41 @@ class WanI2VDancer:
             tokenizer_path=os.path.join(checkpoint_dir, config.clip_tokenizer))
 
         logging.info(f"Creating WanModel from {checkpoint_dir}")
-        self.model = WanModel.from_pretrained(checkpoint_dir)
-        self.model.eval().requires_grad_(False)
-        self.model.to(torch.bfloat16)
+        
+        # Check for GGUF video model
+        gguf_video_path = os.path.join(checkpoint_dir, "SteadyDancer-14B-Q8_0.gguf")
+        if os.path.exists(gguf_video_path):
+            logging.info(f"Detected GGUF Video Model: {gguf_video_path}")
+            
+            self.model = WanModel(
+                model_type='i2v', # Dancer is usually i2v
+                patch_size=config.patch_size,
+                text_len=config.text_len,
+                in_dim=16, 
+                in_dim_c=16,
+                dim=config.dim,
+                ffn_dim=config.ffn_dim,
+                freq_dim=config.freq_dim,
+                text_dim=4096, 
+                out_dim=16, 
+                num_heads=config.num_heads,
+                num_layers=config.num_layers,
+                window_size=config.window_size,
+                qk_norm=config.qk_norm,
+                cross_attn_norm=config.cross_attn_norm,
+                eps=config.eps
+            )
+            
+            from .utils.gguf_loader import load_wan_gguf
+            load_wan_gguf(self.model, gguf_video_path, device=self.device)
+            
+            self.model.eval().requires_grad_(False)
+            self.model.to(torch.bfloat16) # Ensure dtype
+            
+        else:
+            self.model = WanModel.from_pretrained(checkpoint_dir)
+            self.model.eval().requires_grad_(False)
+            self.model.to(torch.bfloat16)
 
         if t5_fsdp or dit_fsdp or use_usp:
             init_on_cpu = False
