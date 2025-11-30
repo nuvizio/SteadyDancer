@@ -247,8 +247,11 @@ class WanT2V:
             context = self.text_encoder([input_prompt], self.device)
             context_null = self.text_encoder([n_prompt], self.device)
             
-            if offload_model and not getattr(self, 'is_gguf_t5', False):
-                self.text_encoder.model.cpu()
+            if offload_model:
+                if getattr(self, 'is_gguf_t5', False):
+                    self.text_encoder.offload_model()
+                else:
+                    self.text_encoder.model.cpu()
         else:
             # For CPU mode (original logic)
             context = self.text_encoder([input_prompt], torch.device('cpu'))
