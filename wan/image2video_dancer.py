@@ -77,14 +77,27 @@ class WanI2VDancer:
         self.param_dtype = config.param_dtype
 
         shard_fn = partial(shard_model, device_id=device_id)
-        self.text_encoder = T5EncoderModel(
-            text_len=config.text_len,
-            dtype=config.t5_dtype,
-            device=torch.device('cpu'),
-            checkpoint_path=os.path.join(checkpoint_dir, config.t5_checkpoint),
-            tokenizer_path=os.path.join(checkpoint_dir, config.t5_tokenizer),
-            shard_fn=shard_fn if t5_fsdp else None,
-        )
+        shard_fn = partial(shard_model, device_id=device_id)
+        
+        t5_ckpt_path = os.path.join(checkpoint_dir, config.t5_checkpoint)
+        if t5_ckpt_path.endswith('.gguf'):
+            from .modules.t5_gguf import GGUFT5Encoder
+            logging.info(f"Detected GGUF T5 checkpoint: {t5_ckpt_path}")
+            self.text_encoder = GGUFT5Encoder(
+                model_path=t5_ckpt_path,
+                device=self.device
+            )
+            self.is_gguf_t5 = True
+        else:
+            self.text_encoder = T5EncoderModel(
+                text_len=config.text_len,
+                dtype=config.t5_dtype,
+                device=torch.device('cpu'),
+                checkpoint_path=t5_ckpt_path,
+                tokenizer_path=os.path.join(checkpoint_dir, config.t5_tokenizer),
+                shard_fn=shard_fn if t5_fsdp else None,
+            )
+            self.is_gguf_t5 = False
 
         self.vae_stride = config.vae_stride
         self.patch_size = config.patch_size
@@ -234,11 +247,15 @@ class WanI2VDancer:
             n_prompt = self.sample_neg_prompt
 
         # preprocess
+        # preprocess
         if not self.t5_cpu:
-            self.text_encoder.model.to(self.device)
+            if not getattr(self, 'is_gguf_t5', False):
+                self.text_encoder.model.to(self.device)
+            
             context = self.text_encoder([input_prompt], self.device)
             context_null = self.text_encoder([n_prompt], self.device)
-            if offload_model:
+            
+            if offload_model and not getattr(self, 'is_gguf_t5', False):
                 self.text_encoder.model.cpu()
         else:
             context = self.text_encoder([input_prompt], torch.device('cpu'))

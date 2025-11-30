@@ -10,7 +10,7 @@ i2v_14B = EasyDict(__name__='Config: Wan I2V 14B')
 i2v_14B.update(wan_shared_cfg)
 i2v_14B.sample_neg_prompt = "镜头晃动，" + i2v_14B.sample_neg_prompt
 
-i2v_14B.t5_checkpoint = 'models_t5_umt5-xxl-enc-bf16.pth'
+i2v_14B.t5_checkpoint = 'umt5-xxl-encoder-Q8_0.gguf'
 i2v_14B.t5_tokenizer = 'google/umt5-xxl'
 
 # clip

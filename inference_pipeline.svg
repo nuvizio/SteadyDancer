@@ -1,0 +1,90 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f8f9fa"/>
+  
+  <!-- Styles -->
+  <style>
+    .box { fill: #e3f2fd; stroke: #1565c0; stroke-width: 2; rx: 10; ry: 10; }
+    .data { fill: #e8f5e9; stroke: #2e7d32; stroke-width: 2; rx: 5; ry: 5; }
+    .process { fill: #fff3e0; stroke: #ef6c00; stroke-width: 2; rx: 10; ry: 10; }
+    .text { font-family: Arial, sans-serif; font-size: 14px; text-anchor: middle; }
+    .title { font-family: Arial, sans-serif; font-size: 20px; font-weight: bold; text-anchor: middle; }
+    .arrow { stroke: #333; stroke-width: 2; marker-end: url(#arrowhead); }
+  </style>
+  
+  <!-- Arrowhead definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="30" class="title">SteadyDancer Inference Pipeline</text>
+
+  <!-- Inputs -->
+  <rect x="50" y="80" width="120" height="50" class="data"/>
+  <text x="110" y="110" class="text">Text Prompt</text>
+
+  <rect x="340" y="80" width="120" height="50" class="data"/>
+  <text x="400" y="110" class="text">Reference Image</text>
+
+  <rect x="630" y="80" width="120" height="50" class="data"/>
+  <text x="690" y="110" class="text">Pose Video</text>
+
+  <!-- Encoders -->
+  <rect x="50" y="180" width="120" height="60" class="box"/>
+  <text x="110" y="215" class="text">T5 Encoder (GGUF)</text>
+
+  <rect x="340" y="180" width="120" height="60" class="box"/>
+  <text x="400" y="215" class="text">Video VAE Enc</text>
+
+  <rect x="630" y="180" width="120" height="60" class="box"/>
+  <text x="690" y="215" class="text">Pose Preprocess</text>
+
+  <!-- Intermediate Data -->
+  <rect x="50" y="290" width="120" height="40" class="data"/>
+  <text x="110" y="315" class="text">Text Embeds</text>
+
+  <rect x="340" y="290" width="120" height="40" class="data"/>
+  <text x="400" y="315" class="text">Image Latents</text>
+
+  <rect x="630" y="290" width="120" height="40" class="data"/>
+  <text x="690" y="315" class="text">Pose Heatmaps</text>
+
+  <!-- Main Process -->
+  <rect x="200" y="380" width="400" height="100" class="process"/>
+  <text x="400" y="420" class="text" font-weight="bold">Wan 2.1 DiT (Diffusion Transformer)</text>
+  <text x="400" y="450" class="text">50 Steps Denoising Loop</text>
+
+  <!-- Output Processing -->
+  <rect x="340" y="530" width="120" height="50" class="box"/>
+  <text x="400" y="560" class="text">Video VAE Dec</text>
+
+  <!-- Final Output -->
+  <rect x="550" y="530" width="120" height="50" class="data" style="fill:#e1bee7; stroke:#8e24aa;"/>
+  <text x="610" y="560" class="text">Final Video (.mp4)</text>
+
+  <!-- Connections -->
+  <!-- Input to Encoder -->
+  <line x1="110" y1="130" x2="110" y2="180" class="arrow"/>
+  <line x1="400" y1="130" x2="400" y2="180" class="arrow"/>
+  <line x1="690" y1="130" x2="690" y2="180" class="arrow"/>
+
+  <!-- Encoder to Data -->
+  <line x1="110" y1="240" x2="110" y2="290" class="arrow"/>
+  <line x1="400" y1="240" x2="400" y2="290" class="arrow"/>
+  <line x1="690" y1="240" x2="690" y2="290" class="arrow"/>
+
+  <!-- Data to DiT -->
+  <line x1="110" y1="330" x2="250" y2="380" class="arrow"/>
+  <line x1="400" y1="330" x2="400" y2="380" class="arrow"/>
+  <line x1="690" y1="330" x2="550" y2="380" class="arrow"/>
+
+  <!-- DiT to Decoder -->
+  <line x1="400" y1="480" x2="400" y2="530" class="arrow"/>
+
+  <!-- Decoder to Final -->
+  <line x1="460" y1="555" x2="550" y2="555" class="arrow"/>
+
+</svg>
