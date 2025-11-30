@@ -70,7 +70,25 @@ class WanT2V:
 
         shard_fn = partial(shard_model, device_id=device_id)
         
-        t5_ckpt_path = os.path.join(checkpoint_dir, config.t5_checkpoint)
+        # Check for T5 checkpoint candidates
+        t5_candidates = [
+            config.t5_checkpoint, # The one in config
+            'models_t5_umt5-xxl-enc-bf16.pth', # Original default
+            'umt5-xxl-encoder-Q8_0.gguf', # Common GGUF name
+        ]
+        
+        t5_ckpt_path = None
+        for candidate in t5_candidates:
+            path = os.path.join(checkpoint_dir, candidate)
+            if os.path.exists(path):
+                t5_ckpt_path = path
+                break
+        
+        if t5_ckpt_path is None:
+            raise FileNotFoundError(f"No T5 checkpoint found in {checkpoint_dir}. Expected one of: {t5_candidates}")
+
+        logging.info(f"Using T5 checkpoint: {t5_ckpt_path}")
+
         if t5_ckpt_path.endswith('.gguf'):
             from .modules.t5_gguf import GGUFT5Encoder
             logging.info(f"Detected GGUF T5 checkpoint: {t5_ckpt_path}")
